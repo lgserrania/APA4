@@ -29,28 +29,50 @@ public final class formaHorario {
     private int[][] profHorasDist; //Matriz com as horas já distribuidas do professor pra certa turma
     private int[][][] profHorarios; //Matriz com os horários ocupados pelo professor
     private int[][][] horarioTurmas; //Matriz com o professor alocado em cada horário da turma
-   
+    private int horasErradas = 0;
+    private int contSemTrocas = 0;
+    private boolean reinicia = false;
     
     
     public formaHorario(){
         
-        try {
-            this.lerArquivo();
-        } catch (IOException ex) {
-            Logger.getLogger(formaHorario.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        
-        this.horarioTurmas = new int[this.numTurmas][this.numDias][this.numHorarios];
-        
-        for(int i = 0; i < this.numTurmas; i++){
-            for(int j = 0; j < this.numDias; j++){
-                for(int k = 0; k < this.numHorarios; k++){
-                    this.horarioTurmas[i][j][k] = -1;
+        do{
+            System.out.println("Começou de novo!");
+            try {
+                this.lerArquivo();
+            } catch (IOException ex) {
+                Logger.getLogger(formaHorario.class.getName()).log(Level.SEVERE, null, ex);
+            }
+
+            //this.descricao();
+            //this.descricaoProf(9);
+
+            this.horarioTurmas = new int[this.numTurmas][this.numDias][this.numHorarios];
+
+            for(int i = 0; i < this.numTurmas; i++){
+                for(int j = 0; j < this.numDias; j++){
+                    for(int k = 0; k < this.numHorarios; k++){
+                        this.horarioTurmas[i][j][k] = -1;
+                    }
                 }
             }
-        }
+
+            this.alocacao();
+
+            this.calculaHorasErradas(); 
+            
+            this.contSemTrocas = 0;
+
+            while(this.horasErradas > 0){
+                int horasAntigas = this.horasErradas;
+                this.swaps();
+                if(horasAntigas == this.horasErradas) this.contSemTrocas++;
+                else this.contSemTrocas = 0;
+                if(this.contSemTrocas > 100000000) break;
+
+            }
+        }while(this.horasErradas > 0);
         
-        this.alocacao();
         
         this.escreveHorarios();
         
@@ -113,8 +135,6 @@ public final class formaHorario {
         //Gerando a matriz de aulas
         this.mata = new int[this.numProf][this.numTurmas];
         
-        linha = lerArq.readLine();
-        
         //As linhas são os professores, as colunas são as turmas
         //e o valor é o número de horas que ele precisa dar
         while(linha != null){          
@@ -131,6 +151,12 @@ public final class formaHorario {
     }
     
     public void alocacao(){
+        
+        this.horarioTurmas[8][0][0] = 9;
+        this.horarioTurmas[8][0][1] = 9;
+        this.profHorarios[9][0][0] = 1;
+        this.profHorarios[9][0][1] = 1;
+        this.profHorasDist[9][8] = 2;
         
         Random gerador = new Random();
         
@@ -155,7 +181,96 @@ public final class formaHorario {
         }    
     }
     
-    private void escreveHorarios(){
+    private void swaps(){
+        
+        Random gerador = new Random();
+        
+        int dia;
+        int turma;
+        int horario;
+        int prof1;
+        int prof2;
+        int horarioTroca;
+        int diaTroca;
+        boolean achouHorarioTroca = false;
+        
+        dia = gerador.nextInt(this.numDias);
+        turma = gerador.nextInt(this.numTurmas);
+        horario = gerador.nextInt(this.numHorarios);
+        
+        do{
+            prof1 = gerador.nextInt(this.numProf);
+        }while(this.profHorasDist[prof1][turma] == 0);
+        
+        if(this.horarioTurmas[turma][dia][horario] == -1){
+            
+            prof2 = gerador.nextInt(this.numProf);
+            
+            do{
+
+                horarioTroca = gerador.nextInt(this.numHorarios);
+                diaTroca = gerador.nextInt(this.numDias);
+                if(this.horarioTurmas[turma][diaTroca][horarioTroca] == prof1) achouHorarioTroca = true;
+
+            }while(!achouHorarioTroca);
+            
+            if(this.mati[prof1][dia][horario] == 0 && this.profHorarios[prof1][dia][horario] == 0){
+
+                if(this.mati[prof2][diaTroca][horarioTroca] == 0 && 
+                        this.profHorarios[prof2][diaTroca][horarioTroca] == 0 &&
+                        this.profHorasDist[prof2][turma] < this.mata[prof2][turma]){
+
+                    this.horarioTurmas[turma][dia][horario] = prof1;
+                    this.horarioTurmas[turma][diaTroca][horarioTroca] = prof2;
+
+                    this.profHorarios[prof1][dia][horario] = 1;
+                    this.profHorarios[prof1][diaTroca][horarioTroca] = 0;
+
+                    this.profHorarios[prof2][diaTroca][horarioTroca] = 1;
+
+                    this.profHorasDist[prof2][turma]++;
+
+                    this.calculaHorasErradas();
+                    //System.out.println("Horas erradas: " + this.horasErradas);
+
+                }
+
+            }
+            
+        }else{
+            
+            prof2 = this.horarioTurmas[turma][dia][horario];
+            
+            do{
+
+                horarioTroca = gerador.nextInt(this.numHorarios);
+                diaTroca = gerador.nextInt(this.numDias);
+                if(this.horarioTurmas[turma][diaTroca][horarioTroca] == prof1) achouHorarioTroca = true;
+
+            }while(!achouHorarioTroca);
+            
+            if(this.mati[prof1][dia][horario] == 0 && this.profHorarios[prof1][dia][horario] == 0){
+
+                if(this.mati[prof2][diaTroca][horarioTroca] == 0 && this.profHorarios[prof2][diaTroca][horarioTroca] == 0){
+
+                    this.horarioTurmas[turma][dia][horario] = prof1;
+                    this.horarioTurmas[turma][diaTroca][horarioTroca] = prof2;
+
+                    this.profHorarios[prof1][dia][horario] = 1;
+                    this.profHorarios[prof1][diaTroca][horarioTroca] = 0;
+
+                    this.profHorarios[prof2][diaTroca][horarioTroca] = 1;
+                    this.profHorarios[prof2][dia][horario] = 0;
+
+                }
+
+            }
+            
+        }
+     
+    }
+
+    private void escreveHorarios(){    
         
         for(int i = 0; i < this.numTurmas; i++){
             System.out.println("########### TURMA " + this.turmas[i] + " ###########");
@@ -186,5 +301,104 @@ public final class formaHorario {
                 }
             }
         }
+    }
+    
+    private void calculaHorasErradas(){
+        
+        this.horasErradas = 0;
+        
+        for(int i = 0; i < this.numTurmas; i++){
+            for(int j = 0; j < this.numDias; j++){
+                for(int k = 0; k < this.numHorarios; k++){
+                    if(this.horarioTurmas[i][j][k] == -1) this.horasErradas++;
+                }
+            }
+        }
+        
+    }
+            
+    private void descricao(){
+        
+        int numDias;
+        int numHorarios;
+        int numAulas;
+        int numTurmas;
+        boolean achouDia;
+        boolean achouTurma;
+        
+        for(int prof = 0; prof < this.numProf; prof++){
+            
+            numDias = 0;
+            numHorarios = 0;
+            numTurmas = 0;
+            numAulas = 0;
+            
+            for(int dia = 0; dia < this.numDias; dia++){
+                achouDia = false;
+                for(int horario = 0; horario < this.numHorarios; horario++){
+                    if(this.mati[prof][dia][horario] == 0){
+                        numHorarios++;
+                        achouDia = true;
+                    }
+                }
+                if(achouDia) numDias++;
+            }
+            
+            for(int turma = 0; turma < this.numTurmas; turma++){
+                
+                if(this.mata[prof][turma] > 0){
+                    numAulas += this.mata[prof][turma];
+                    numTurmas++;
+                }
+                
+            }
+            
+            System.out.println("O professor " + prof + " possui " + numHorarios 
+                    + " disponíveis distribuidos em " + numDias + " dias e precisa dar " 
+                    + numAulas + " aulas para " + numTurmas + " turmas");
+            
+        }
+        
+    }
+    
+    private void descricaoProf(int prof){
+        
+        System.out.println("O professor " + prof + " tem os seguintes horários livres:");
+        
+        for(int dia = 0; dia < this.numDias; dia++){
+            for(int horario = 0; horario < this.numHorarios; horario++){
+                if(this.mati[prof][dia][horario] == 0){
+                    System.out.println("Dia: " + dia + " - Horario: " + horario);
+                }
+            }
+        }
+        System.out.println("O mesmo precisa dar aula para as turmas: ");
+        for(int turma = 0; turma < this.numTurmas; turma++){
+            if(this.mata[prof][turma] > 0){
+                System.out.println(turma + " - " + this.turmas[turma]);
+            }
+        }
+        
+    }
+    
+    private void informacoesFinais(){
+        
+        int total = 0;
+        
+        System.out.println("################## Horas faltando #################");
+        for(int prof = 0; prof < this.numProf; prof++){     
+            for(int turma = 0; turma < this.numTurmas; turma++){
+                if(this.profHorasDist[prof][turma] < this.mata[prof][turma]){
+                    System.out.println("Professor " + prof);
+                    System.out.println("Faltou " + (this.mata[prof][turma] - this.profHorasDist[prof][turma]) + " horas na turma " + turma);
+                    System.out.println("\n");
+                    total += this.mata[prof][turma] - this.profHorasDist[prof][turma];
+                }
+            }
+            
+        }
+        
+        System.out.println("Total de horas não distribuídas: " + total);
+        
     }
 }
